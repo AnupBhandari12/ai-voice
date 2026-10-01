@@ -18,13 +18,17 @@ export default function Recorder() {
   const [audioUrl, setAudioUrl] = useState("");
   const [error, setError] = useState("");
 
+  const [audioBlob, setAudioBlob] = useState(null);
+  const [transcript, setTranscript] = useState("");
+  const [isTranscribing, setIsTranscribing] = useState(false);
+
   // Release the microphone immediately when recording finishes.
   function releaseMicrophone() {
     streamRef.current?.getTracks().forEach((track) => track.stop());
     streamRef.current = null;
   }
 
-   // Clear recording timers so they do not continue running in the background.
+  // Clear recording timers so they do not continue running in the background.
   function clearRecordingTimers() {
     if (intervalRef.current) {
       clearInterval(intervalRef.current);
@@ -48,6 +52,8 @@ export default function Recorder() {
     if (isRecording) return;
     try {
       setError("");
+      setTranscript("");
+      setAudioBlob(null);
 
       if (!navigator.mediaDevices?.getUserMedia) {
         setError("Your browser does not support microphone recording.");
@@ -90,6 +96,7 @@ export default function Recorder() {
         }
 
         // Create a temporary browser URL so we can test the recorded audio.
+        setAudioBlob(audioBlob);
         setAudioUrl(URL.createObjectURL(audioBlob));
 
         releaseMicrophone();
@@ -130,6 +137,44 @@ export default function Recorder() {
     }
   }
 
+  async function transcribeRecording() {
+    if (!audioBlob) {
+      setError("Please record audio before transcription.");
+      return;
+    }
+
+    try {
+      setError("");
+      setIsTranscribing(true);
+
+      const formData = new FormData();
+
+      // Give the Blob a real filename so the server/provider knows the format.
+      const extension = audioBlob.type.includes("mp4") ? "mp4" : "webm";
+
+      formData.append("audio", audioBlob, `recording.${extension}`);
+
+      const response = await fetch("/api/transcribe", {
+        method: "POST",
+        body: formData,
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data?.error?.message || "Transcription failed.");
+      }
+
+      setTranscript(data.transcript || "");
+    } catch (error) {
+      console.error("Transcription request failed:", error);
+
+      setError(error.message || "Transcription could not be completed.");
+    } finally {
+      setIsTranscribing(false);
+    }
+  }
+
   // Safety cleanup if the user leaves the page while recording.
   useEffect(() => {
     return () => {
@@ -137,8 +182,6 @@ export default function Recorder() {
       releaseMicrophone();
     };
   }, []);
-
- 
 
   return (
     <section className="rounded-xl border border-gray-200 p-6">
@@ -181,6 +224,25 @@ export default function Recorder() {
           <p className="mb-2 text-sm font-medium">Recorded audio</p>
 
           <audio controls src={audioUrl} />
+        </div>
+      )}
+
+      {audioBlob && (
+        <button
+          type="button"
+          onClick={transcribeRecording}
+          disabled={isTranscribing}
+          className="mt-5 rounded-lg bg-black px-5 py-2.5 text-white disabled:opacity-40"
+        >
+          {isTranscribing ? "Transcribing..." : "Transcribe Nepali"}
+        </button>
+      )}
+
+      {transcript && (
+        <div className="mt-6 rounded-xl border border-gray-200 p-5">
+          <p className="text-sm font-medium text-gray-500">Raw Transcript</p>
+
+          <p className="mt-3 whitespace-pre-wrap leading-7">{transcript}</p>
         </div>
       )}
     </section>
