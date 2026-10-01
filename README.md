@@ -1,36 +1,43 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+# Nepali Voice AI Writer
 
-## Getting Started
+A full-stack AI web application that converts Nepali speech into editable and exportable digital documents.
 
-First, run the development server:
+## Core Flow
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+Voice
+→ Nepali Transcript
+→ Safe Cleanup
+→ Manual Edit
+→ Save
+→ DOCX / PDF
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Product Modes
 
-You can start editing the page by modifying `app/page.js`. The page auto-updates as you edit the file.
+### 1. Exact Dictation
+Transcribes the user's speech without rewriting the content.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### 2. Clean Nepali
+Improves spelling, grammar, punctuation, and formatting while preserving facts.
 
-## Learn More
+### 3. AI Document
+Uses user-provided facts to create structured documents such as applications, letters, notices, and drafts.
 
-To learn more about Next.js, take a look at the following resources:
+## Tech Stack
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- Next.js App Router
+- JavaScript
+- Tailwind CSS
+- PostgreSQL
+- Prisma
+- Google Speech-to-Text / OpenAI transcription
+- OpenAI text AI
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Core Product Rule
 
-## Deploy on Vercel
+The user's speech/transcript is the source of truth.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+The system must never silently invent or change factual information.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Current Development Phase
+
+Phase 0 — Planning and Setup
