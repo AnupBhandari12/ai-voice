@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+// import { useState } from "react";
 
 const modes = [
   {
@@ -23,9 +23,7 @@ const modes = [
   },
 ];
 
-export default function ModeSelector() {
-  const [selectedMode, setSelectedMode] = useState(null);
-
+export default function ModeSelector({ selectedMode, onModeChange }) {
   return (
     <div className="mt-10 grid gap-4 md:grid-cols-3">
       {modes.map((mode) => {
@@ -35,7 +33,7 @@ export default function ModeSelector() {
           <button
             key={mode.id}
             type="button"
-            onClick={() => setSelectedMode(mode.id)}
+            onClick={() => onModeChange(mode.id)}
             className={`rounded-xl border p-6 text-left transition ${
               isSelected
                 ? "border-black bg-gray-50"

@@ -6,7 +6,7 @@ import RecordingTimer from "./RecordingTimer.jsx";
 const MAX_RECORDING_SECONDS = 300; // 5 minutes
 
 const AUDIO_MIME_TYPES = ["audio/webm;codecs=opus", "audio/webm", "audio/mp4"];
-export default function Recorder() {
+export default function Recorder({ onTranscriptReady }) {
   const mediaRecorderRef = useRef(null);
   const streamRef = useRef(null);
   const chunksRef = useRef([]);
@@ -54,6 +54,7 @@ export default function Recorder() {
       setError("");
       setTranscript("");
       setAudioBlob(null);
+      onTranscriptReady?.("");
 
       if (!navigator.mediaDevices?.getUserMedia) {
         setError("Your browser does not support microphone recording.");
@@ -165,7 +166,10 @@ export default function Recorder() {
         throw new Error(data?.error?.message || "Transcription failed.");
       }
 
-      setTranscript(data.transcript || "");
+      const rawTranscript = data.transcript || "";
+
+      setTranscript(rawTranscript);
+      onTranscriptReady?.(rawTranscript);
     } catch (error) {
       console.error("Transcription request failed:", error);
 

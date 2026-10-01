@@ -1,7 +1,24 @@
+"use client";
+
+import { useState } from "react";
+
 import ModeSelector from "../../../components/documents/ModeSelector";
 import Recorder from "../../../components/voice/Recorder";
+import ExactEditor from "../../../components/documents/ExactEditor";
 
 export default function NewDocumentPage() {
+    const [selectedMode, setSelectedMode] = useState(null);
+    const [originalTranscript, setOriginalTranscript] = useState("");
+    const [editableText, setEditableText] = useState("");
+
+
+    function handleTranscriptReady(rawTranscript) {
+        setOriginalTranscript(rawTranscript);
+
+        // Start the editable version with the exact STT output.
+        setEditableText(rawTranscript);
+    }
+
     return (
         <main className="min-h-screen px-6 py-16">
             <section className="mx-auto max-w-5xl">
@@ -17,10 +34,20 @@ export default function NewDocumentPage() {
                     Select the mode that matches what you want to create.
                 </p>
 
-                <ModeSelector />
+                <ModeSelector
+                    selectedMode={selectedMode}
+                    onModeChange={setSelectedMode}
+                />
 
                 <div className="mt-12">
-                    <Recorder />
+                    <Recorder onTranscriptReady={handleTranscriptReady} />
+                    {selectedMode === "exact" && (
+                        <ExactEditor
+                            originalTranscript={originalTranscript}
+                            editableText={editableText}
+                            onEditableTextChange={setEditableText}
+                        />
+                    )}
                 </div>
             </section>
         </main>
