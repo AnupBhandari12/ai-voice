@@ -2,6 +2,9 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { cleanNepaliText } from "@/lib/ai/cleanNepali";
+import { compareProtectedFacts } from "../../../lib/reliability/compareFacts";
+import { extractProtectedEntities } from "../../../lib/ai/extractProtectedEntities";
+import { compareProtectedEntities } from "../../../lib/reliability/compareEntities";
 
 const MAX_TEXT_CHARS = Number(
   process.env.MAX_TEXT_CHARS || 30000
@@ -42,10 +45,34 @@ export async function POST(request) {
       result.data.transcript
     );
 
+    const reliabilityResult = compareProtectedFacts(
+      result.data.transcript,
+      cleanedResult.correctedText,
+    );
+
+    const [originalEntities, cleanedEntities] = await Promise.all([
+      extractProtectedEntities(result.data.transcript),
+      extractProtectedEntities(cleanedResult.correctedText),
+    ]);
+
+    const entityWarnings = compareProtectedEntities(
+      originalEntities,
+      cleanedEntities,
+    );
+
+    const reliabilityWarnings = [
+      ...reliabilityResult.warnings,
+      ...entityWarnings,
+    ];
+
+    const isSafe = reliabilityWarnings.length === 0;
+
     return NextResponse.json({
       correctedText: cleanedResult.correctedText,
       uncertainSpans: cleanedResult.uncertainSpans,
       notes: cleanedResult.notes,
+      isSafe,
+      reliabilityWarnings,
     });
   } catch (error) {
     console.error("Clean Nepali failed:", error);

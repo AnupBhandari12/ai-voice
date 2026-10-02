@@ -12,15 +12,22 @@ export default function CleanEditor({
   const [isCleaning, setIsCleaning] = useState(false);
   const [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
+  const [reviewConfirmed, setReviewConfirmed] = useState(false);
   const [activeTab, setActiveTab] = useState(
     cleanResult ? "cleaned" : "original",
   );
+
+  const hasHighRiskWarning =
+    cleanResult?.reliabilityWarnings?.some(
+      (warning) => warning.severity === "high",
+    ) ?? false;
 
   async function handleCleanNepali() {
     if (!originalTranscript?.trim()) return;
 
     try {
       setError("");
+      setReviewConfirmed(false);
       setIsCleaning(true);
 
       const response = await fetch("/api/clean-text", {
@@ -43,6 +50,8 @@ export default function CleanEditor({
         correctedText: data.correctedText || "",
         uncertainSpans: data.uncertainSpans || [],
         notes: data.notes || [],
+        isSafe: data.isSafe ?? true,
+        reliabilityWarnings: data.reliabilityWarnings || [],
       });
 
       setCopied(false);
@@ -70,6 +79,7 @@ export default function CleanEditor({
   function handleTextChange(event) {
     onEditableTextChange(event.target.value);
     setCopied(false);
+    setReviewConfirmed(false);
   }
   return (
     <section className="mt-8 rounded-xl border border-gray-200 p-6">
@@ -125,6 +135,49 @@ export default function CleanEditor({
         </div>
       ) : (
         <div className="mt-5">
+          {activeTab === "cleaned" &&
+            cleanResult?.isSafe === false &&
+            cleanResult?.reliabilityWarnings?.length > 0 && (
+              <div className="mb-4 rounded-lg border border-red-200 bg-red-50 p-4">
+                <p className="font-medium text-red-700">
+                  Possible factual change detected
+                </p>
+
+                <ul className="mt-2 list-disc pl-5 text-sm text-red-700">
+                  {cleanResult.reliabilityWarnings.map((warning, index) => (
+                    <li key={`${warning.code}-${warning.value}-${index}`}>
+                      <span className="font-semibold uppercase">
+                        {warning.severity || "medium"}:
+                      </span>{" "}
+                      {warning.message}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          {activeTab === "cleaned" &&
+            cleanResult?.isSafe === false &&
+            hasHighRiskWarning && (
+              <label className="mb-4 flex items-start gap-2 text-sm text-gray-700">
+                <input
+                  type="checkbox"
+                  checked={reviewConfirmed}
+                  onChange={(event) => setReviewConfirmed(event.target.checked)}
+                  className="mt-1"
+                />
+
+                <span>I reviewed the factual changes shown above.</span>
+              </label>
+            )}
+
+          {activeTab === "cleaned" &&
+            cleanResult?.isSafe === false &&
+            hasHighRiskWarning &&
+            reviewConfirmed && (
+              <p className="mb-4 text-sm font-medium text-green-700">
+                Reviewed by user ✓
+              </p>
+            )}
           <label
             htmlFor="clean-editor"
             className="mb-2 block text-sm font-medium"
@@ -143,7 +196,7 @@ export default function CleanEditor({
           <button
             type="button"
             onClick={handleCopy}
-            disabled={!editableText}
+            disabled={!editableText || (hasHighRiskWarning && !reviewConfirmed)}
             className="mt-4 rounded-lg bg-black px-5 py-2.5 text-white disabled:opacity-40"
           >
             {copied ? "Copied ✓" : "Copy Cleaned Text"}
