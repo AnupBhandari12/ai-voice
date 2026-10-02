@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { prisma } from "@/lib/prisma";
+import { getCurrentUser } from "@/lib/auth/currentUser";
 
 const updateDocumentSchema = z
   .object({
@@ -19,28 +20,24 @@ export async function GET(request, { params }) {
   try {
     const { id } = await params;
 
-    const devUser = await prisma.user.findUnique({
-      where: {
-        email: "dev@local.test",
-      },
-    });
+    const user = await getCurrentUser();
 
-    if (!devUser) {
+    if (!user) {
       return NextResponse.json(
         {
           error: {
-            code: "DEV_USER_NOT_FOUND",
-            message: "Development user was not found.",
+            code: "UNAUTHENTICATED",
+            message: "Authentication required.",
           },
         },
-        { status: 500 },
+        { status: 401 },
       );
     }
 
     const document = await prisma.document.findFirst({
       where: {
         id,
-        userId: devUser.id,
+        userId: user.id,
       },
     });
 
@@ -96,28 +93,24 @@ export async function PATCH(request, { params }) {
       );
     }
 
-    const devUser = await prisma.user.findUnique({
-      where: {
-        email: "dev@local.test",
-      },
-    });
+    const user = await getCurrentUser();
 
-    if (!devUser) {
+    if (!user) {
       return NextResponse.json(
         {
           error: {
-            code: "DEV_USER_NOT_FOUND",
-            message: "Development user was not found.",
+            code: "UNAUTHENTICATED",
+            message: "Authentication required.",
           },
         },
-        { status: 500 },
+        { status: 401 },
       );
     }
 
     const existingDocument = await prisma.document.findFirst({
       where: {
         id,
-        userId: devUser.id,
+        userId: user.id,
       },
     });
 
@@ -162,29 +155,24 @@ export async function PATCH(request, { params }) {
 export async function DELETE(request, { params }) {
   try {
     const { id } = await params;
+    const user = await getCurrentUser();
 
-    const devUser = await prisma.user.findUnique({
-      where: {
-        email: "dev@local.test",
-      },
-    });
-
-    if (!devUser) {
+    if (!user) {
       return NextResponse.json(
         {
           error: {
-            code: "DEV_USER_NOT_FOUND",
-            message: "Development user was not found.",
+            code: "UNAUTHENTICATED",
+            message: "Authentication required.",
           },
         },
-        { status: 500 },
+        { status: 401 },
       );
     }
 
     const existingDocument = await prisma.document.findFirst({
       where: {
         id,
-        userId: devUser.id,
+        userId: user.id,
       },
     });
 

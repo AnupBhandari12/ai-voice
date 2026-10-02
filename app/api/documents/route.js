@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { prisma } from "@/lib/prisma";
+import { getCurrentUser } from "@/lib/auth/currentUser";
 
 const createDocumentSchema = z.object({
   title: z.string().trim().min(1).max(120),
@@ -18,27 +19,23 @@ const MODE_MAP = {
 };
 export async function GET() {
   try {
-    const devUser = await prisma.user.findUnique({
-      where: {
-        email: "dev@local.test",
-      },
-    });
+    const user = await getCurrentUser();
 
-    if (!devUser) {
+    if (!user) {
       return NextResponse.json(
         {
           error: {
-            code: "DEV_USER_NOT_FOUND",
-            message: "Development user was not found.",
+            code: "UNAUTHENTICATED",
+            message: "Authentication required.",
           },
         },
-        { status: 500 },
+        { status: 401 },
       );
     }
 
     const documents = await prisma.document.findMany({
       where: {
-        userId: devUser.id,
+        userId: user.id,
       },
       orderBy: {
         updatedAt: "desc",
@@ -83,27 +80,23 @@ export async function POST(request) {
       );
     }
 
-    const devUser = await prisma.user.findUnique({
-      where: {
-        email: "dev@local.test",
-      },
-    });
+    const user = await getCurrentUser();
 
-    if (!devUser) {
+    if (!user) {
       return NextResponse.json(
         {
           error: {
-            code: "DEV_USER_NOT_FOUND",
-            message: "Development user was not found.",
+            code: "UNAUTHENTICATED",
+            message: "Authentication required.",
           },
         },
-        { status: 500 },
+        { status: 401 },
       );
     }
 
     const document = await prisma.document.create({
       data: {
-        userId: devUser.id,
+        userId: user.id,
         title: result.data.title,
         mode: MODE_MAP[result.data.mode],
         originalTranscript:

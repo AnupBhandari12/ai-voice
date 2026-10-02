@@ -2,10 +2,11 @@
 
 import { useEffect, useState } from "react";
 
-import ModeSelector from "../../../components/documents/ModeSelector";
-import Recorder from "../../../components/voice/Recorder";
-import ExactEditor from "../../../components/documents/ExactEditor";
-import CleanEditor from "../../../components/documents/CleanEditor";
+import ModeSelector from "@/components/documents/ModeSelector";
+import Recorder from "@/components/voice/Recorder";
+import ExactEditor from "@/components/documents/ExactEditor";
+import CleanEditor from "@/components/documents/CleanEditor";
+import AuthStatus from "@/components/auth/AuthStatus";
 
 export default function NewDocumentPage() {
     const [selectedMode, setSelectedMode] = useState(null);
@@ -175,6 +176,9 @@ export default function NewDocumentPage() {
     return (
         <main className="min-h-screen px-6 py-16">
             <section className="mx-auto max-w-5xl">
+                <div className="mb-8 flex justify-end">
+                    <AuthStatus />
+                </div>
                 <p className="text-sm font-medium text-gray-500">
                     New Document
                 </p>
