@@ -5,11 +5,14 @@ import { useState } from "react";
 import ModeSelector from "../../../components/documents/ModeSelector";
 import Recorder from "../../../components/voice/Recorder";
 import ExactEditor from "../../../components/documents/ExactEditor";
+import CleanEditor from "../../../components/documents/CleanEditor";
 
 export default function NewDocumentPage() {
     const [selectedMode, setSelectedMode] = useState(null);
     const [originalTranscript, setOriginalTranscript] = useState("");
     const [editableText, setEditableText] = useState("");
+    const [cleanResult, setCleanResult] = useState(null);
+    const [cleanEditableText, setCleanEditableText] = useState("");
 
 
     function handleTranscriptReady(rawTranscript) {
@@ -17,6 +20,15 @@ export default function NewDocumentPage() {
 
         // Start the editable version with the exact STT output.
         setEditableText(rawTranscript);
+
+        // A new transcript needs a fresh Clean Nepali result.
+        setCleanResult(null);
+        setCleanEditableText("");
+    }
+
+    function handleCleanResult(result) {
+        setCleanResult(result);
+        setCleanEditableText(result.correctedText);
     }
 
     return (
@@ -46,6 +58,15 @@ export default function NewDocumentPage() {
                             originalTranscript={originalTranscript}
                             editableText={editableText}
                             onEditableTextChange={setEditableText}
+                        />
+                    )}
+                    {selectedMode === "clean" && originalTranscript && (
+                        <CleanEditor
+                            originalTranscript={originalTranscript}
+                            cleanResult={cleanResult}
+                            onCleanResult={handleCleanResult}
+                            editableText={cleanEditableText}
+                            onEditableTextChange={setCleanEditableText}
                         />
                     )}
                 </div>
