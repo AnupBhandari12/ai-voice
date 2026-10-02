@@ -40,7 +40,7 @@ export default function RegisterPage() {
         );
       }
 
-      router.push("/documents/new");
+      router.push("/dashboard");
       router.refresh();
     } catch (error) {
       setError(error.message);
