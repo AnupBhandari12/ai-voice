@@ -7,7 +7,10 @@ import { getCurrentUser } from "@/lib/auth/currentUser";
 const updateDocumentSchema = z
   .object({
     title: z.string().trim().min(1).max(120).optional(),
+    documentType: z.string().trim().min(1).max(80).optional(),
+    originalTranscript: z.string().optional(),
     correctedText: z.string().optional(),
+    generatedText: z.string().optional(),
     finalText: z.string().optional(),
     status: z.enum(["DRAFT", "READY", "ERROR"]).optional(),
   })

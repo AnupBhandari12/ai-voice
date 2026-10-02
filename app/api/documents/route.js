@@ -7,8 +7,10 @@ import { getCurrentUser } from "@/lib/auth/currentUser";
 const createDocumentSchema = z.object({
   title: z.string().trim().min(1).max(120),
   mode: z.enum(["exact", "clean", "ai-document"]),
+  documentType: z.string().trim().min(1).max(80).optional(),
   originalTranscript: z.string().optional(),
   correctedText: z.string().optional(),
+  generatedText: z.string().optional(),
   finalText: z.string().optional(),
 });
 
@@ -103,6 +105,10 @@ export async function POST(request) {
           result.data.originalTranscript || null,
         correctedText:
           result.data.correctedText || null,
+        generatedText:
+          result.data.generatedText || null,
+        documentType:
+          result.data.documentType || null,
         finalText:
           result.data.finalText || null,
       },

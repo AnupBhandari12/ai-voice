@@ -7,11 +7,16 @@ import Recorder from "@/components/voice/Recorder";
 import ExactEditor from "@/components/documents/ExactEditor";
 import CleanEditor from "@/components/documents/CleanEditor";
 import AuthStatus from "@/components/auth/AuthStatus";
+import AIDocumentEditor from "@/components/documents/AIDocumentEditor";
 
 export default function NewDocumentPage() {
     const [selectedMode, setSelectedMode] = useState(null);
     const [originalTranscript, setOriginalTranscript] = useState("");
     const [editableText, setEditableText] = useState("");
+    const [aiDescription, setAiDescription] = useState("");
+    const [aiDraft, setAiDraft] = useState("");
+    const [aiGeneratedText, setAiGeneratedText] = useState("");
+    const [aiDocumentType, setAiDocumentType] = useState("");
     const [cleanResult, setCleanResult] = useState(null);
     const [cleanEditableText, setCleanEditableText] = useState("");
 
@@ -26,6 +31,20 @@ export default function NewDocumentPage() {
 
         // Start the editable version with the exact STT output.
         setEditableText(rawTranscript);
+        if (selectedMode === "ai-document") {
+            setAiDescription((previousDescription) => {
+                const previous = previousDescription.trim();
+
+                if (!previous) {
+                    return rawTranscript;
+                }
+
+                return `${previous}\n${rawTranscript}`;
+            });
+
+            setAiDraft("");
+            setAiGeneratedText("");
+        }
 
         // A new transcript needs a fresh Clean Nepali result.
         setCleanResult(null);
@@ -90,6 +109,25 @@ export default function NewDocumentPage() {
                         "",
                     );
                 }
+                if (document.mode === "AI_DOCUMENT") {
+                    setAiDescription(
+                        document.originalTranscript || "",
+                    );
+
+                    setAiGeneratedText(
+                        document.generatedText || "",
+                    );
+
+                    setAiDraft(
+                        document.finalText ||
+                        document.generatedText ||
+                        "",
+                    );
+
+                    setAiDocumentType(
+                        document.documentType || "",
+                    );
+                }
 
                 setSaveMessage("Document loaded.");
             } catch (error) {
@@ -103,9 +141,22 @@ export default function NewDocumentPage() {
     }, []);
     async function handleSaveDocument() {
         const finalText =
-            selectedMode === "clean" ? cleanEditableText : editableText;
+            selectedMode === "clean"
+                ? cleanEditableText
+                : selectedMode === "ai-document"
+                    ? aiDraft
+                    : editableText;
 
-        if (!selectedMode || !originalTranscript.trim() || !finalText.trim()) {
+        const sourceText =
+            selectedMode === "ai-document"
+                ? aiDescription
+                : originalTranscript;
+
+        if (
+            !selectedMode ||
+            !sourceText.trim() ||
+            !finalText.trim()
+        ) {
             setSaveMessage("Save गर्न text उपलब्ध छैन।");
             return;
         }
@@ -120,20 +171,32 @@ export default function NewDocumentPage() {
                 ? {
                     title: title.trim() || "Untitled Document",
                     finalText,
+
                     ...(selectedMode === "clean" && {
                         correctedText: cleanEditableText,
+                    }),
+
+                    ...(selectedMode === "ai-document" && {
+                        originalTranscript: aiDescription,
+                        generatedText: aiGeneratedText,
+                        documentType: aiDocumentType,
                     }),
                 }
                 : {
                     title: title.trim() || "Untitled Document",
                     mode: selectedMode,
-                    originalTranscript,
+                    originalTranscript: sourceText,
                     finalText,
+
                     ...(selectedMode === "clean" && {
                         correctedText: cleanEditableText,
                     }),
-                };
 
+                    ...(selectedMode === "ai-document" && {
+                        generatedText: aiGeneratedText,
+                        documentType: aiDocumentType,
+                    }),
+                };
             const response = await fetch(
                 isUpdate
                     ? `/api/documents/${documentId}`
@@ -214,46 +277,62 @@ export default function NewDocumentPage() {
                             onEditableTextChange={setCleanEditableText}
                         />
                     )}
-                    {selectedMode && originalTranscript && (
-                        <div className="mt-8 rounded-xl border border-gray-200 p-5">
-                            <label
-                                htmlFor="document-title"
-                                className="text-sm font-medium text-gray-700"
-                            >
-                                Document title
-                            </label>
-
-                            <input
-                                id="document-title"
-                                type="text"
-                                value={title}
-                                onChange={(event) => setTitle(event.target.value)}
-                                placeholder="Untitled Document"
-                                className="mt-2 w-full rounded-lg border border-gray-300 px-3 py-2"
-                            />
-
-                            <button
-                                type="button"
-                                onClick={handleSaveDocument}
-                                disabled={isSaving || isLoadingDocument}
-                                className="mt-4 rounded-lg bg-black px-4 py-2 text-white disabled:opacity-50"
-                            >
-                                {isLoadingDocument
-                                    ? "Loading..."
-                                    : isSaving
-                                        ? "Saving..."
-                                        : documentId
-                                            ? "Update Document"
-                                            : "Save Document"}
-                            </button>
-
-                            {saveMessage && (
-                                <p className="mt-3 text-sm text-gray-600">
-                                    {saveMessage}
-                                </p>
-                            )}
-                        </div>
+                    {selectedMode === "ai-document" && (
+                        <AIDocumentEditor
+                            description={aiDescription}
+                            onDescriptionChange={setAiDescription}
+                            draft={aiDraft}
+                            onDraftChange={setAiDraft}
+                            onResult={(result) => {
+                                setAiGeneratedText(result.draft || "");
+                                setAiDocumentType(
+                                    result.intent?.documentType || "",
+                                );
+                            }}
+                        />
                     )}
+                    {selectedMode &&
+                        (originalTranscript ||
+                            (selectedMode === "ai-document" && aiDescription)) && (
+                            <div className="mt-8 rounded-xl border border-gray-200 p-5">
+                                <label
+                                    htmlFor="document-title"
+                                    className="text-sm font-medium text-gray-700"
+                                >
+                                    Document title
+                                </label>
+
+                                <input
+                                    id="document-title"
+                                    type="text"
+                                    value={title}
+                                    onChange={(event) => setTitle(event.target.value)}
+                                    placeholder="Untitled Document"
+                                    className="mt-2 w-full rounded-lg border border-gray-300 px-3 py-2"
+                                />
+
+                                <button
+                                    type="button"
+                                    onClick={handleSaveDocument}
+                                    disabled={isSaving || isLoadingDocument}
+                                    className="mt-4 rounded-lg bg-black px-4 py-2 text-white disabled:opacity-50"
+                                >
+                                    {isLoadingDocument
+                                        ? "Loading..."
+                                        : isSaving
+                                            ? "Saving..."
+                                            : documentId
+                                                ? "Update Document"
+                                                : "Save Document"}
+                                </button>
+
+                                {saveMessage && (
+                                    <p className="mt-3 text-sm text-gray-600">
+                                        {saveMessage}
+                                    </p>
+                                )}
+                            </div>
+                        )}
                 </div>
             </section>
         </main>
