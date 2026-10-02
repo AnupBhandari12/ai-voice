@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import ModeSelector from "../../../components/documents/ModeSelector";
 import Recorder from "../../../components/voice/Recorder";
@@ -14,6 +14,11 @@ export default function NewDocumentPage() {
     const [cleanResult, setCleanResult] = useState(null);
     const [cleanEditableText, setCleanEditableText] = useState("");
 
+    const [title, setTitle] = useState("");
+    const [documentId, setDocumentId] = useState(null);
+    const [isSaving, setIsSaving] = useState(false);
+    const [saveMessage, setSaveMessage] = useState("");
+    const [isLoadingDocument, setIsLoadingDocument] = useState(false);
 
     function handleTranscriptReady(rawTranscript) {
         setOriginalTranscript(rawTranscript);
@@ -24,11 +29,147 @@ export default function NewDocumentPage() {
         // A new transcript needs a fresh Clean Nepali result.
         setCleanResult(null);
         setCleanEditableText("");
+        setDocumentId(null);
+        setSaveMessage("");
     }
 
     function handleCleanResult(result) {
         setCleanResult(result);
         setCleanEditableText(result.correctedText);
+    }
+
+    useEffect(() => {
+        const params = new URLSearchParams(window.location.search);
+        const id = params.get("id");
+
+        if (!id) {
+            return;
+        }
+
+        async function loadDocument() {
+            setIsLoadingDocument(true);
+            setSaveMessage("");
+
+            try {
+                const response = await fetch(`/api/documents/${id}`);
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(
+                        data.error?.message || "Document load failed.",
+                    );
+                }
+
+                const document = data.document;
+
+                const modeMap = {
+                    EXACT: "exact",
+                    CLEAN: "clean",
+                    AI_DOCUMENT: "ai-document",
+                };
+
+                setDocumentId(document.id);
+                setTitle(document.title || "");
+                setSelectedMode(modeMap[document.mode]);
+
+                setOriginalTranscript(
+                    document.originalTranscript || "",
+                );
+
+                setEditableText(
+                    document.finalText ||
+                    document.originalTranscript ||
+                    "",
+                );
+
+                if (document.mode === "CLEAN") {
+                    setCleanEditableText(
+                        document.finalText ||
+                        document.correctedText ||
+                        "",
+                    );
+                }
+
+                setSaveMessage("Document loaded.");
+            } catch (error) {
+                setSaveMessage(error.message);
+            } finally {
+                setIsLoadingDocument(false);
+            }
+        }
+
+        loadDocument();
+    }, []);
+    async function handleSaveDocument() {
+        const finalText =
+            selectedMode === "clean" ? cleanEditableText : editableText;
+
+        if (!selectedMode || !originalTranscript.trim() || !finalText.trim()) {
+            setSaveMessage("Save गर्न text उपलब्ध छैन।");
+            return;
+        }
+
+        setIsSaving(true);
+        setSaveMessage("");
+
+        try {
+            const isUpdate = Boolean(documentId);
+
+            const body = isUpdate
+                ? {
+                    title: title.trim() || "Untitled Document",
+                    finalText,
+                    ...(selectedMode === "clean" && {
+                        correctedText: cleanEditableText,
+                    }),
+                }
+                : {
+                    title: title.trim() || "Untitled Document",
+                    mode: selectedMode,
+                    originalTranscript,
+                    finalText,
+                    ...(selectedMode === "clean" && {
+                        correctedText: cleanEditableText,
+                    }),
+                };
+
+            const response = await fetch(
+                isUpdate
+                    ? `/api/documents/${documentId}`
+                    : "/api/documents",
+                {
+                    method: isUpdate ? "PATCH" : "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify(body),
+                },
+            );
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(
+                    data.error?.message || "Document save failed.",
+                );
+            }
+
+            setDocumentId(data.document.id);
+
+            window.history.replaceState(
+                {},
+                "",
+                `/documents/new?id=${data.document.id}`,
+            );
+
+            setSaveMessage(
+                isUpdate ? "Document updated." : "Document saved.",
+            );
+        } catch (error) {
+            setSaveMessage(error.message);
+        } finally {
+            setIsSaving(false);
+        }
     }
 
     return (
@@ -68,6 +209,46 @@ export default function NewDocumentPage() {
                             editableText={cleanEditableText}
                             onEditableTextChange={setCleanEditableText}
                         />
+                    )}
+                    {selectedMode && originalTranscript && (
+                        <div className="mt-8 rounded-xl border border-gray-200 p-5">
+                            <label
+                                htmlFor="document-title"
+                                className="text-sm font-medium text-gray-700"
+                            >
+                                Document title
+                            </label>
+
+                            <input
+                                id="document-title"
+                                type="text"
+                                value={title}
+                                onChange={(event) => setTitle(event.target.value)}
+                                placeholder="Untitled Document"
+                                className="mt-2 w-full rounded-lg border border-gray-300 px-3 py-2"
+                            />
+
+                            <button
+                                type="button"
+                                onClick={handleSaveDocument}
+                                disabled={isSaving || isLoadingDocument}
+                                className="mt-4 rounded-lg bg-black px-4 py-2 text-white disabled:opacity-50"
+                            >
+                                {isLoadingDocument
+                                    ? "Loading..."
+                                    : isSaving
+                                        ? "Saving..."
+                                        : documentId
+                                            ? "Update Document"
+                                            : "Save Document"}
+                            </button>
+
+                            {saveMessage && (
+                                <p className="mt-3 text-sm text-gray-600">
+                                    {saveMessage}
+                                </p>
+                            )}
+                        </div>
                     )}
                 </div>
             </section>
