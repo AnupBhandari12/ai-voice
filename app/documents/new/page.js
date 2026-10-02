@@ -23,6 +23,8 @@ export default function NewDocumentPage() {
     const [title, setTitle] = useState("");
     const [documentId, setDocumentId] = useState(null);
     const [isSaving, setIsSaving] = useState(false);
+    const [isExportingDocx, setIsExportingDocx] = useState(false);
+    const [isExportingPdf, setIsExportingPdf] = useState(false);
     const [saveMessage, setSaveMessage] = useState("");
     const [isLoadingDocument, setIsLoadingDocument] = useState(false);
 
@@ -235,7 +237,124 @@ export default function NewDocumentPage() {
             setIsSaving(false);
         }
     }
+    async function handleDownloadDocx() {
+        const finalText =
+            selectedMode === "clean"
+                ? cleanEditableText
+                : selectedMode === "ai-document"
+                    ? aiDraft
+                    : editableText;
 
+        if (!finalText.trim()) {
+            setSaveMessage("Export गर्न text उपलब्ध छैन।");
+            return;
+        }
+
+        setIsExportingDocx(true);
+        setSaveMessage("");
+
+        try {
+            const response = await fetch("/api/export/docx", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                    title: title.trim() || "Nepali Document",
+                    finalText,
+                }),
+            });
+
+            if (!response.ok) {
+                const data = await response.json();
+
+                throw new Error(
+                    data.error?.message || "DOCX export failed.",
+                );
+            }
+
+            const blob = await response.blob();
+            const url = URL.createObjectURL(blob);
+
+            const link = document.createElement("a");
+
+            link.href = url;
+            link.download = `${title.trim() || "nepali-document"}.docx`;
+
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+
+            URL.revokeObjectURL(url);
+
+            setSaveMessage("DOCX downloaded.");
+        } catch (error) {
+            setSaveMessage(error.message);
+        } finally {
+            setIsExportingDocx(false);
+        }
+    }
+    async function handleDownloadPdf() {
+        const finalText =
+            selectedMode === "clean"
+                ? cleanEditableText
+                : selectedMode === "ai-document"
+                    ? aiDraft
+                    : editableText;
+
+        if (!finalText.trim()) {
+            setSaveMessage("Export गर्न text उपलब्ध छैन।");
+            return;
+        }
+
+        setIsExportingPdf(true);
+        setSaveMessage("");
+
+        try {
+            const response = await fetch("/api/export/pdf", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                    title: title.trim() || "Nepali Document",
+                    finalText,
+                }),
+            });
+
+            if (!response.ok) {
+                const data = await response.json();
+
+                throw new Error(
+                    data.error?.message || "PDF export failed.",
+                );
+            }
+
+            const blob = await response.blob();
+            const url = URL.createObjectURL(blob);
+
+            const safeTitle = (
+                title.trim() || "nepali-document"
+            ).replace(/[\/\\:*?"<>|]/g, "-");
+
+            const link = document.createElement("a");
+
+            link.href = url;
+            link.download = `${safeTitle}.pdf`;
+
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+
+            URL.revokeObjectURL(url);
+
+            setSaveMessage("PDF downloaded.");
+        } catch (error) {
+            setSaveMessage(error.message);
+        } finally {
+            setIsExportingPdf(false);
+        }
+    }
     return (
         <main className="min-h-screen px-6 py-16">
             <section className="mx-auto max-w-5xl">
@@ -324,6 +443,28 @@ export default function NewDocumentPage() {
                                             : documentId
                                                 ? "Update Document"
                                                 : "Save Document"}
+                                </button>
+
+                                <button
+                                    type="button"
+                                    onClick={handleDownloadDocx}
+                                    disabled={isExportingDocx}
+                                    className="ml-3 mt-4 rounded-lg border border-gray-300 px-4 py-2 disabled:opacity-50"
+                                >
+                                    {isExportingDocx
+                                        ? "Exporting..."
+                                        : "Download DOCX"}
+                                </button>
+
+                                <button
+                                    type="button"
+                                    onClick={handleDownloadPdf}
+                                    disabled={isExportingPdf}
+                                    className="ml-3 mt-4 rounded-lg border border-gray-300 px-4 py-2 disabled:opacity-50"
+                                >
+                                    {isExportingPdf
+                                        ? "Exporting..."
+                                        : "Download PDF"}
                                 </button>
 
                                 {saveMessage && (
